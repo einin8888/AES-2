@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
 #include <math.h>
 
 //à√çÜâªópÇÃSbox
@@ -128,7 +131,8 @@ void addroundkey(int m[4][4],int k[11][4][4],int count){
     //printf("**********\naddroundkey\n");
     for(int i = 0;i < 4;i++){
         for(int j = 0;j < 4;j++){
-            m[i][j] = m[i][j] ^ k[count][i][j];
+            //printf("m[%d][%d] = m[%d][%d] ^ subkey[%d][%d][%d]\n",i,j,i,j,count,j,i);
+            m[i][j] = m[i][j] ^ k[count][j][i];
             //printf("%x ",m[i][j]);
         }
         //printf("\n");
@@ -219,11 +223,87 @@ void mixcolumns(int m[4][4]){
 }
 
 //ïúçÜÇ≈égópÇ∑ÇÈä÷êî
-invmixcolumn
+void invmixcolumns(int m[4][4]){
+    int invmix[4][4] = {
+        {0x0e,0x0b,0x0d,0x09},
+        {0x09,0x0e,0x0b,0x0d},
+        {0x0d,0x09,0x0e,0x0b},
+        {0x0b,0x0d,0x09,0x0e}
+    };
 
-invshiftrows
+    int invmixcolumn[4][4] = {0};
 
-invsubword
+    int a,b;
+
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            for(int k = 0;k < 4;k++){
+                b = 0;
+                for(int l = 0;l < 8;l++){
+                    a = invmix[i][k] & (1 << l);
+                    b = b ^ (a * m[k][j]);
+                }
+                invmixcolumn[i][j] = invmixcolumn[i][j] ^ b;
+            }
+            for(int q = 7;q >- 1;q--){
+                if(invmixcolumn[i][j] >= (0x100 << q)){
+                    invmixcolumn[i][j] = invmixcolumn[i][j] ^ (0x11b << q);
+                }
+            }
+        }
+    }
+
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            m[i][j] = invmixcolumn[i][j];
+        }
+    }
+}
+
+void invshiftrows(int m[4][4]){
+    int p;
+
+    p = m[1][3];
+    m[1][3] = m[1][2];
+    m[1][2] = m[1][1];
+    m[1][1] = m[1][0];
+    m[1][0] = p;
+
+    p = m[2][0];
+    m[2][0] = m[2][2];
+    m[2][2] = p;
+    p = m[1][3];
+    m[1][3] = m[1][1];
+    m[1][1] = p;
+
+    p = m[3][0];
+    m[3][0] = m[3][1];
+    m[3][1] = m[3][2];
+    m[3][2] = m[3][3];
+    m[3][3] = p;
+
+    //printff("****************\ninvshiftrows\n");
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            //printf("%x ",m[i][j]);
+        }
+        //printf("\n");
+    }
+}
+
+void invsubword(int m[4][4]){
+    int x,y;
+    //printf("**********\ninvsubword\n");
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            x = m[i][j] / 0x10;
+            y = m[i][j] % 0x10;
+            m[i][j] = Inv_S_box[x][y];
+            //printf("%x ",m[i][j]);
+        }
+        //printf("\n");
+    }
+}
 
 int main(){
 //îÈñßåÆÇÃçÏê¨ îÈñßåÆÇë÷Ç¶ÇÈèÍçáÇÕÇ±Ç±ÇÇ¢Ç∂ÇÈ
@@ -240,10 +320,11 @@ int main(){
     for(int i = 0;i < 4;i++){
         for(int j = 0;j < 4;j++){
             k[0][i][j] = w[i][j];
-            //printf("%x ",k[0][i][j],k[0][i][j]);
+            //printf("%x ",k[0][i][j]);
         }
         //printf("\n");
     }
+    //printf("*****\n");
 
     for(int t = 1;t <= 10;t++){
         rotword(w);
@@ -254,10 +335,11 @@ int main(){
 
         for(int i = 0;i < 4;i++){
             for(int j = 0;j < 4;j++){
-                //printf(" %d %x  ",k[t][i][j],k[t][i][j]);
+                //printf("%x ",k[t][i][j]);
             }
             //printf("\n");
         }
+        //printf("*****\n");
     }
 //à√çÜèàóù
 //ïΩï∂?
@@ -266,11 +348,27 @@ int main(){
         {0x01,0x05,0x09,0x0d},
         {0x02,0x06,0x0a,0x0e},
         {0x03,0x07,0x0b,0x0f}
-        };
+    };
+
+    printf("***Plain text***\n");
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            printf("%3x ",m[i][j]);
+        }
+        printf("\n");
+    }
 
     int i = 0;
 //p172-3 ç≈èâÇÃAddRoundKey
     addroundkey(m,k,i);
+
+    /*printf("***1staddroundkey***\n");
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            printf("%3x ",m[i][j]);
+        }
+        printf("\n");
+    }*/
 
     i++;
 
@@ -283,10 +381,10 @@ int main(){
         addroundkey(m,k,i);
     }
 
-    printf("***Ciphertext***\n");
+    printf("***Cipher text***\n");
     for(int i = 0;i < 4;i++){
         for(int j = 0;j < 4;j++){
-            printf("%x ",m[i][j]);
+            printf("%3x ",m[i][j]);
         }
         printf("\n");
     }
@@ -297,17 +395,28 @@ int main(){
 
     for(;j >= 1;j--){
         addroundkey(m,k,j);
-        invmixcolumn;
-        invshiftrows;
-        invsubword;
+        if(j != 10){
+            invmixcolumns(m);
+        if(j == 9){
+            printf("***1st invmixcolumns***\n");
+            for(int k = 0;k < 4;k++){
+                for(int g = 0;g < 4;g++){
+                    printf("%3x",m[k][g]);
+                }
+                printf("\n");
+        }
+        invshiftrows(m);
+        invsubword(m);
+            }
+        }
     }
 
     addroundkey(m,k,j);
 
-    printf("***Plaintext***\n");
+    printf("***Decrypted text***\n");
     for(int i = 0;i < 4;i++){
         for(int j = 0;j < 4;j++){
-            printf("%x ",m[i][j]);
+            printf("%3x ",m[i][j]);
         }
         printf("\n");
     }
